@@ -108,6 +108,11 @@ class StringInflectionsTest < ActiveSupport::TestCase
     assert_equal("capital", "Capital".camelize(:lower))
   end
 
+  def test_camelize_default_case
+    assert_equal("Capital", "Capital".camelize(nil))
+    assert_equal("Capital", "Capital".camelize(false))
+  end
+
   def test_dasherize
     UnderscoresToDashes.each do |underscored, dasherized|
       assert_equal(dasherized, underscored.dasherize)
