@@ -24,21 +24,21 @@ module Rails
         # namespace :foo do
         #   namespace :bar do
         regular_class_path.each do |ns|
-          lines << indent("namespace :#{ns} do\n", depth * 2)
+          lines << optimize_indentation("namespace :#{ns} do", depth * 2)
           depth += 1
         end
 
         # inserts the primary resource
         # Create route
         #     resources 'products'
-        lines << indent(%{resources :#{file_name.pluralize}\n}, depth * 2)
+        lines << optimize_indentation(%{resources :#{file_name.pluralize}}, depth * 2)
 
         # Create `end` ladder
         #   end
         # end
         until depth.zero?
           depth -= 1
-          lines << indent("end\n", depth * 2)
+          lines << optimize_indentation("end", depth * 2)
         end
 
         route lines.join

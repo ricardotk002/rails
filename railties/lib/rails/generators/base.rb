@@ -284,13 +284,8 @@ module Rails
           concat(content)
         end
 
-        def indent(content, multiplier = 2) # :doc:
-          spaces = " " * multiplier
-          content.each_line.map { |line| line.blank? ? line : "#{spaces}#{line}" }.join
-        end
-
         def wrap_with_namespace(content) # :doc:
-          content = indent(content).chomp
+          content = optimize_indentation(content, 2).chomp
           "module #{namespace.name}\n#{content}\nend\n"
         end
 
