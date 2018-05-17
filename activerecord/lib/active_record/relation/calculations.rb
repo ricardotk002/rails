@@ -196,7 +196,8 @@ module ActiveRecord
           @klass.has_attribute?(cn) || @klass.attribute_alias?(cn) ? arel_attribute(cn) : cn
         }
         result = skip_query_cache_if_necessary { klass.connection.select_all(relation.arel, nil) }
-        result.cast_values(klass.attribute_types)
+        cast_types = klass.attribute_types.merge(result.column_types)
+        result.cast_values(cast_types)
       end
     end
 
