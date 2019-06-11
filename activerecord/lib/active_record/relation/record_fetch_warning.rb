@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/module/attribute_accessors_per_thread"
+
 module ActiveRecord
   class Relation
     module RecordFetchWarning
@@ -32,16 +34,12 @@ module ActiveRecord
       # :startdoc:
 
       class QueryRegistry # :nodoc:
-        extend ActiveSupport::PerThreadRegistry
+        thread_mattr_accessor :queries, default: []
 
-        attr_reader :queries
-
-        def initialize
-          @queries = []
-        end
-
-        def reset
-          @queries.clear
+        class << self
+          def reset
+            queries.clear
+          end
         end
       end
     end
