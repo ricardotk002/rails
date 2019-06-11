@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support/per_thread_registry"
+require "active_support/core_ext/module/attribute_accessors_per_thread"
 require "active_support/notifications"
 
 module ActiveSupport
@@ -147,7 +148,7 @@ module ActiveSupport
 
     private
       def event_stack
-        SubscriberQueueRegistry.instance.get_queue(@queue_key)
+        SubscriberQueueRegistry.get_queue(@queue_key)
       end
   end
 
@@ -156,14 +157,12 @@ module ActiveSupport
   # See the documentation of <tt>ActiveSupport::PerThreadRegistry</tt>
   # for further details.
   class SubscriberQueueRegistry # :nodoc:
-    extend PerThreadRegistry
+    thread_mattr_accessor :registry, default: {}
 
-    def initialize
-      @registry = {}
-    end
-
-    def get_queue(queue_key)
-      @registry[queue_key] ||= []
+    class << self
+      def get_queue(queue_key)
+        registry[queue_key] ||= []
+      end
     end
   end
 end
