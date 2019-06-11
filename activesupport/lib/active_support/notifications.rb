@@ -2,7 +2,7 @@
 
 require "active_support/notifications/instrumenter"
 require "active_support/notifications/fanout"
-require "active_support/per_thread_registry"
+require "active_support/core_ext/module/attribute_accessors_per_thread"
 
 module ActiveSupport
   # = Notifications
@@ -251,7 +251,7 @@ module ActiveSupport
       end
 
       def instrumenter
-        InstrumentationRegistry.instance.instrumenter_for(notifier)
+        InstrumentationRegistry.instrumenter_for(notifier)
       end
     end
 
@@ -264,14 +264,12 @@ module ActiveSupport
     # The instrumenters for multiple notifiers are held in a single instance of
     # this class.
     class InstrumentationRegistry # :nodoc:
-      extend ActiveSupport::PerThreadRegistry
+      thread_mattr_accessor :registry, default: {}
 
-      def initialize
-        @registry = {}
-      end
-
-      def instrumenter_for(notifier)
-        @registry[notifier] ||= Instrumenter.new(notifier)
+      class << self
+        def instrumenter_for(notifier)
+          registry[notifier] ||= Instrumenter.new(notifier)
+        end
       end
     end
 
