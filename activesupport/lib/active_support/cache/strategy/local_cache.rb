@@ -2,7 +2,7 @@
 
 require "active_support/core_ext/object/duplicable"
 require "active_support/core_ext/string/inflections"
-require "active_support/per_thread_registry"
+require "active_support/core_ext/module/attribute_accessors_per_thread"
 
 module ActiveSupport
   module Cache
@@ -15,22 +15,18 @@ module ActiveSupport
 
         # Class for storing and registering the local caches.
         class LocalCacheRegistry # :nodoc:
-          extend ActiveSupport::PerThreadRegistry
+          thread_mattr_accessor :registry
 
-          def initialize
-            @registry = {}
+          class << self
+            def cache_for(local_cache_key)
+              self.registry ||= {}
+              registry[local_cache_key]
+            end
+
+            def set_cache_for(local_cache_key, value)
+              registry[local_cache_key] = value
+            end
           end
-
-          def cache_for(local_cache_key)
-            @registry[local_cache_key]
-          end
-
-          def set_cache_for(local_cache_key, value)
-            @registry[local_cache_key] = value
-          end
-
-          def self.set_cache_for(l, v); instance.set_cache_for l, v; end
-          def self.cache_for(l); instance.cache_for l; end
         end
 
         # Simple memory backed cache. This cache is not thread safe and is intended only
