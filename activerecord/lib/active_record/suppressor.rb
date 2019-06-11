@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/module/attribute_accessors_per_thread"
+
 module ActiveRecord
   # ActiveRecord::Suppressor prevents the receiver from being saved during
   # a given block.
@@ -50,12 +52,6 @@ module ActiveRecord
   end
 
   class SuppressorRegistry # :nodoc:
-    extend ActiveSupport::PerThreadRegistry
-
-    attr_reader :suppressed
-
-    def initialize
-      @suppressed = {}
-    end
+    thread_mattr_accessor :suppressed, default: {}
   end
 end
