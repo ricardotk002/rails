@@ -199,6 +199,7 @@ module Rails
 
           if respond_to?(:action_dispatch)
             action_dispatch.return_only_request_media_type_on_content_type = false
+            action_dispatch.silence_disabled_session_errors = false
           end
 
           if respond_to?(:action_view)

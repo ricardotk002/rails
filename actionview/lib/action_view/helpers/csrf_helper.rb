@@ -26,6 +26,16 @@ module ActionView
             tag("meta", name: "csrf-token", content: form_authenticity_token)
           ].join("\n").html_safe
         end
+      rescue ActionDispatch::Request::Session::DisabledSessionError
+        if Rails.application.config.action_dispatch.silence_disabled_session_errors
+          # TODO: The deprecation message need work
+          ActiveSupport::Deprecation.warn(<<-MSG.squish)
+            Calling `csrf_meta_tags` when session are disabled is deprecated. Either configure session or disable CSRF protection
+          MSG
+          nil
+        else
+          raise
+        end
       end
 
       # For backwards compatibility.

@@ -741,7 +741,20 @@ module ActionView
 
         def token_tag(token = nil, form_options: {})
           if token != false && defined?(protect_against_forgery?) && protect_against_forgery?
-            token ||= form_authenticity_token(form_options: form_options)
+            token ||= begin
+              form_authenticity_token(form_options: form_options)
+            rescue ActionDispatch::Request::Session::DisabledSessionError
+              if Rails.application.config.action_dispatch.silence_disabled_session_errors
+                # TODO: The deprecation message need work
+                ActiveSupport::Deprecation.warn(<<-MSG.squish)
+                  Request forgery protection need a functionnal session but your app has sessions disabled.
+                  Either configure session or disable CSRF protection
+                MSG
+                nil
+              else
+                raise
+              end
+            end
             tag(:input, type: "hidden", name: request_forgery_protection_token.to_s, value: token)
           else
             ""
