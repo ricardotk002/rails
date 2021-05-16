@@ -45,10 +45,9 @@ module ActionDispatch
       # read a notice you put there or <tt>flash["notice"] = "hello"</tt>
       # to put a new one.
       def flash
-        return Flash::NullFlash unless session.respond_to?(:loaded?)
         flash = flash_hash
         return flash if flash
-        self.flash = Flash::FlashHash.from_session_value(session["flash"])
+        self.flash = Flash::FlashHash.from_session_value(session["flash"], session.enabled?)
       end
 
       def flash=(flash)
@@ -77,20 +76,6 @@ module ActionDispatch
       def reset_session # :nodoc:
         super
         self.flash = nil
-      end
-    end
-
-    module NullFlash #:nodoc:
-      class << self
-        def []=(k, v); end
-
-        def [](k); end
-
-        def alert=(message); end
-
-        def notice=(message); end
-
-        def empty?; end
       end
     end
 
@@ -126,22 +111,22 @@ module ActionDispatch
     class FlashHash
       include Enumerable
 
-      def self.from_session_value(value) #:nodoc:
+      def self.from_session_value(value, enabled = true) #:nodoc:
         case value
         when FlashHash # Rails 3.1, 3.2
           flashes = value.instance_variable_get(:@flashes)
           if discard = value.instance_variable_get(:@used)
             flashes.except!(*discard)
           end
-          new(flashes, flashes.keys)
+          new(flashes, flashes.keys, enabled)
         when Hash # Rails 4.0
           flashes = value["flashes"]
           if discard = value["discard"]
             flashes.except!(*discard)
           end
-          new(flashes, flashes.keys)
+          new(flashes, flashes.keys, enabled)
         else
-          new
+          new({}, [], enabled)
         end
       end
 
@@ -153,10 +138,11 @@ module ActionDispatch
         { "discard" => [], "flashes" => flashes_to_keep }
       end
 
-      def initialize(flashes = {}, discard = []) #:nodoc:
+      def initialize(flashes = {}, discard = [], enabled = true) #:nodoc:
         @discard = Set.new(stringify_array(discard))
         @flashes = flashes.stringify_keys
         @now     = nil
+        @enabled = enabled
       end
 
       def initialize_copy(other)
@@ -168,6 +154,7 @@ module ActionDispatch
       end
 
       def []=(k, v)
+        notify_writes_if_disabled!
         k = k.to_s
         @discard.delete k
         @flashes[k] = v
@@ -178,6 +165,7 @@ module ActionDispatch
       end
 
       def update(h) #:nodoc:
+        notify_writes_if_disabled!
         @discard.subtract stringify_array(h.keys)
         @flashes.update h.stringify_keys
         self
@@ -192,6 +180,7 @@ module ActionDispatch
       end
 
       def delete(key)
+        notify_writes_if_disabled!
         key = key.to_s
         @discard.delete key
         @flashes.delete key
@@ -207,6 +196,7 @@ module ActionDispatch
       end
 
       def clear
+        notify_writes_if_disabled!
         @discard.clear
         @flashes.clear
       end
@@ -218,6 +208,7 @@ module ActionDispatch
       alias :merge! :update
 
       def replace(h) #:nodoc:
+        notify_writes_if_disabled!
         @discard.clear
         @flashes.replace h.stringify_keys
         self
@@ -242,6 +233,7 @@ module ActionDispatch
       #   flash.now.notice = "Good luck now!"
       #   # Equivalent to flash.now[:notice] = "Good luck now!"
       def now
+        notify_writes_if_disabled!
         @now ||= FlashNow.new(self)
       end
 
@@ -250,6 +242,7 @@ module ActionDispatch
       #    flash.keep            # keeps the entire flash
       #    flash.keep(:notice)   # keeps only the "notice" entry, the rest of the flash is discarded
       def keep(k = nil)
+        notify_writes_if_disabled!
         k = k.to_s if k
         @discard.subtract Array(k || keys)
         k ? self[k] : self
@@ -260,6 +253,7 @@ module ActionDispatch
       #     flash.discard              # discard the entire flash at the end of the current action
       #     flash.discard(:warning)    # discard only the "warning" entry at the end of the current action
       def discard(k = nil)
+        notify_writes_if_disabled!
         k = k.to_s if k
         @discard.merge Array(k || keys)
         k ? self[k] : self
@@ -269,6 +263,7 @@ module ActionDispatch
       #
       # This method is called automatically by filters, so you generally don't need to care about it.
       def sweep #:nodoc:
+        notify_writes_if_disabled!
         @discard.each { |k| @flashes.delete k }
         @discard.replace @flashes.keys
       end
@@ -280,6 +275,7 @@ module ActionDispatch
 
       # Convenience accessor for <tt>flash[:alert]=</tt>.
       def alert=(message)
+        notify_writes_if_disabled!
         self[:alert] = message
       end
 
@@ -290,12 +286,21 @@ module ActionDispatch
 
       # Convenience accessor for <tt>flash[:notice]=</tt>.
       def notice=(message)
+        notify_writes_if_disabled!
         self[:notice] = message
       end
 
       protected
         def now_is_loaded?
           @now
+        end
+
+        def notify_writes_if_disabled!
+          unless @enabled
+            ActiveSupport::Deprecation.warn(<<-MSG.squish)
+              Accessing `flash` when the session store is disabled is deprecated.
+            MSG
+          end
         end
 
       private

@@ -244,7 +244,7 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
   SessionKey = "_myapp_session"
   Generator = ActiveSupport::CachingKeyGenerator.new(
     ActiveSupport::KeyGenerator.new("b3c631c314c0bbca50c1b2843150fe33", iterations: 1000)
- )
+  )
   Rotations = ActiveSupport::Messages::RotationConfiguration.new
   SIGNED_COOKIE_SALT = "signed cookie"
 
@@ -275,6 +275,18 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
       if stale? etag: "abe"
         render inline: "maybe flash"
       end
+    end
+
+    def set_flash_and_keep_it
+      flash["that"] = "hello"
+      flash.keep
+      render inline: "hello"
+    end
+
+    def set_flash_and_update_it
+      flash["that"] = "hello"
+      flash.update("that" => "hello again")
+      render inline: "hello"
     end
   end
 
@@ -358,6 +370,47 @@ class FlashIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_respond_to controller, :alert
     assert_respond_to controller, :notice
+  end
+
+  def test_null_flash_object
+    options = {
+      env: {
+        ActionDispatch::Request::Session::ENV_SESSION_KEY => ActionDispatch::Request::Session.disabled({}),
+        ActionDispatch::Request::Session::ENV_SESSION_OPTIONS_KEY => {}
+      }
+    }
+
+    with_test_route_set do
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_flash", **options
+        assert response.ok?
+      end
+
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_flash_now", **options
+        assert response.ok?
+      end
+
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_bar", **options
+        assert response.ok?
+      end
+
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_flash_optionally", **options
+        assert response.ok?
+      end
+
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_flash_and_keep_it", **options
+        assert response.ok?
+      end
+
+      assert_deprecated(/Accessing `flash` when the session store is disabled is deprecated./) do
+        get "/set_flash_and_update_it", **options
+        assert response.ok?
+      end
+    end
   end
 
   private

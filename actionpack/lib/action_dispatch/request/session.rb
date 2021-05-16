@@ -16,7 +16,11 @@ module ActionDispatch
       # Creates a session hash, merging the properties of the previous session if any.
       def self.create(store, req, default_options)
         session_was = find req
-        session     = Request::Session.new(store, req)
+        session     = if session_was && !session_was.enabled?
+          disabled(req) # If previous session is disabled, the new one should be too (maybe)
+        else
+          new(store, req)
+        end
         session.merge! session_was if session_was
 
         set(req, session)
@@ -247,8 +251,9 @@ module ActionDispatch
         def load_for_write!
           if enabled?
             load! unless loaded?
-          else
-            raise DisabledSessionError, "Your application has sessions disabled. To write to the session you must first configure a session store"
+          # If previous the session is disabled, this will break
+          # else
+          #   raise DisabledSessionError, "Your application has sessions disabled. To write to the session you must first configure a session store"
           end
         end
 
