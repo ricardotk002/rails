@@ -87,7 +87,7 @@ module ActionDispatch
       end
 
       def options
-        Options.find @req
+        Options.find(@req) || {}
       end
 
       def destroy
